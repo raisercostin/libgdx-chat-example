@@ -5,6 +5,6 @@ import com.badlogic.gdx.scenes.scene2d.Stage;
 
 public class PickNameStage extends Stage {
 	public PickNameStage() {
-		super(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+		super();//Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
 	}
 }

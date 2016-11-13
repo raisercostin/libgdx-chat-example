@@ -1,41 +1,30 @@
 package org.stofkat.chat.core;
 
+import java.lang.StringBuilder;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.BitmapFont.TextBounds;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.*;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout.GlyphRun;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.scenes.scene2d.Actor;
-import com.badlogic.gdx.scenes.scene2d.Group;
-import com.badlogic.gdx.scenes.scene2d.InputEvent;
-import com.badlogic.gdx.scenes.scene2d.InputListener;
-import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin;
-import com.badlogic.gdx.scenes.scene2d.ui.TextField;
+import com.badlogic.gdx.scenes.scene2d.*;
+import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.ui.TextField.TextFieldStyle;
-import com.badlogic.gdx.scenes.scene2d.ui.Widget;
-import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
-import com.badlogic.gdx.scenes.scene2d.utils.Disableable;
-import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
-import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.Clipboard;
-import com.badlogic.gdx.utils.FloatArray;
-import com.badlogic.gdx.utils.TimeUtils;
-import com.badlogic.gdx.utils.Timer;
+import com.badlogic.gdx.scenes.scene2d.utils.*;
+import com.badlogic.gdx.utils.*;
 import com.badlogic.gdx.utils.Timer.Task;
 
 /**
  * In the TextFieldListener implementation of libgdx there's currently (libgdx
  * version 0.9.8 & 0.9.9) a bug that makes the "ENTER" key impossible to detect when
  * it's pressed in a TextField in GWT.
- * 
+ *
  * So with this class we're going to override some methods to make sure we do
  * pass the enter key correctly.
- * 
+ *
  * @author Leejjon
  */
 public class ChatTextField extends Widget implements Disableable {
@@ -68,7 +57,7 @@ public class ChatTextField extends Widget implements Disableable {
 	private StringBuilder passwordBuffer;
 
 	private final Rectangle fieldBounds = new Rectangle();
-	private final TextBounds textBounds = new TextBounds();
+	private final GlyphLayout layout = new GlyphLayout();
 	private final Rectangle scissor = new Rectangle();
 	float renderOffset, textOffset;
 	private int visibleTextStart, visibleTextEnd;
@@ -325,7 +314,7 @@ public class ChatTextField extends Widget implements Disableable {
 						}
 					} else if ((character == TAB /*|| character == ENTER_ANDROID*/) && focusTraversal) {
 //						next(Gdx.input.isKeyPressed(Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Keys.SHIFT_RIGHT));
-					} else if (font.containsCharacter(character)) {
+					} else if (font.getData().hasGlyph(character)) {
 						// Character may be added to the text.
 						if (character != ENTER_DESKTOP && character != ENTER_ANDROID) {
 							if (filter != null && !filter.acceptChar(ChatTextField.this, character)) return true;
@@ -356,7 +345,7 @@ public class ChatTextField extends Widget implements Disableable {
 						// END OF CODE I ADDED TO MAKE ENTER WORK - Leejjon
 						listener.keyTyped(ChatTextField.this, character);
 					}
-				
+
 					return true;
 				} else
 					return false;
@@ -452,8 +441,7 @@ public class ChatTextField extends Widget implements Disableable {
 	}
 
 	@Override
-	public void draw (SpriteBatch batch, float parentAlpha) {
-
+	public void draw(Batch batch, float parentAlpha) {
 		Stage stage = getStage();
 		boolean focused = stage != null && stage.getKeyboardFocus() == this;
 
@@ -470,7 +458,7 @@ public class ChatTextField extends Widget implements Disableable {
 		float y = getY();
 		float width = getWidth();
 		float height = getHeight();
-		float textY = textBounds.height / 2 + font.getDescent();
+		float textY = layout.height / 2 + font.getDescent();
 
 		batch.setColor(color.r, color.g, color.b, color.a * parentAlpha);
 		float bgLeftWidth = 0;
@@ -485,11 +473,11 @@ public class ChatTextField extends Widget implements Disableable {
 		calculateOffsets();
 
 		if (focused && hasSelection && selection != null) {
-			selection.draw(batch, x + selectionX + bgLeftWidth + renderOffset, y + textY - textBounds.height - font.getDescent(),
-				selectionWidth, textBounds.height + font.getDescent() / 2);
+			selection.draw(batch, x + selectionX + bgLeftWidth + renderOffset, y + textY - layout.height - font.getDescent(),
+				selectionWidth, layout.height + font.getDescent() / 2);
 		}
 
-		float yOffset = font.isFlipped() ? -textBounds.height : 0;
+		float yOffset = font.isFlipped() ? -layout.height : 0;
 		if (displayText.length() == 0) {
 			if (!focused && messageText != null) {
 				if (style.messageFontColor != null) {
@@ -502,14 +490,15 @@ public class ChatTextField extends Widget implements Disableable {
 			}
 		} else {
 			font.setColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a * parentAlpha);
-			font.draw(batch, displayText, x + bgLeftWidth + textOffset, y + textY + yOffset, visibleTextStart, visibleTextEnd);
+			boolean focused2 = focused;
+			font.draw(batch, displayText, x + bgLeftWidth + textOffset, y + textY + yOffset, visibleTextStart, visibleTextEnd,focused2);
 		}
 		if (focused && !disabled) {
 			blink();
 			if (cursorOn && cursorPatch != null) {
 				cursorPatch.draw(batch, x + bgLeftWidth + textOffset + glyphPositions.get(cursor)
-					- glyphPositions.items[visibleTextStart] - 1, y + textY - textBounds.height - font.getDescent(),
-					cursorPatch.getMinWidth(), textBounds.height + font.getDescent() / 2);
+					- glyphPositions.items[visibleTextStart] - 1, y + textY - layout.height - font.getDescent(),
+					cursorPatch.getMinWidth(), layout.height + font.getDescent() / 2);
 			}
 		}
 	}
@@ -518,11 +507,11 @@ public class ChatTextField extends Widget implements Disableable {
 		StringBuilder buffer = new StringBuilder();
 		for (int i = 0; i < text.length(); i++) {
 			char c = text.charAt(i);
-			buffer.append(style.font.containsCharacter(c) ? c : ' ');
+			buffer.append(style.font.getData().hasGlyph(c) ? c : ' ');
 		}
 		String text = buffer.toString();
 
-		if (passwordMode && style.font.containsCharacter(passwordCharacter)) {
+		if (passwordMode && style.font.getData().hasGlyph(passwordCharacter)) {
 			if (passwordBuffer == null) passwordBuffer = new StringBuilder(text.length());
 			if (passwordBuffer.length() > text.length()) //
 				passwordBuffer.setLength(text.length());
@@ -533,8 +522,26 @@ public class ChatTextField extends Widget implements Disableable {
 			displayText = passwordBuffer;
 		} else
 			displayText = text;
-		style.font.computeGlyphAdvancesAndPositions(displayText, glyphAdvances, glyphPositions);
+		//style.font.
+		computeGlyphAdvancesAndPositions(displayText, glyphAdvances, glyphPositions);
 		if (selectionStart > text.length()) selectionStart = text.length();
+	}
+
+	private void computeGlyphAdvancesAndPositions(CharSequence displayText, FloatArray glyphAdvances,
+			FloatArray glyphPositions) {
+		BitmapFont font = style.font;
+		layout.setText(font, displayText);
+		glyphPositions.clear();
+		float x = 0;
+		if (layout.runs.size > 0) {
+			GlyphRun run = layout.runs.first();
+			FloatArray xAdvances = run.xAdvances;
+			for (int i = 0, n = xAdvances.size; i < n; i++) {
+				glyphPositions.add(x);
+				x += xAdvances.get(i);
+			}
+		}
+		glyphPositions.add(x);
 	}
 
 	private void blink () {
@@ -571,7 +578,7 @@ public class ChatTextField extends Widget implements Disableable {
 			for (int i = 0; i < content.length(); i++) {
 				if (maxLength > 0 && text.length() + buffer.length() + 1 > maxLength) break;
 				char c = content.charAt(i);
-				if (!style.font.containsCharacter(c)) continue;
+				if (!style.font.getData().hasGlyph(c)) continue;
 				if (filter != null && !filter.acceptChar(this, c)) continue;
 				buffer.append(c);
 			}
@@ -683,7 +690,7 @@ public class ChatTextField extends Widget implements Disableable {
 		for (int i = 0; i < text.length(); i++) {
 			if (maxLength > 0 && buffer.length() + 1 > maxLength) break;
 			char c = text.charAt(i);
-			if (onlyFontChars && !style.font.containsCharacter(c)) continue;
+			if (onlyFontChars && !style.font.getData().hasGlyph(c)) continue;
 			if (filter != null && !filter.acceptChar(this, c)) continue;
 			buffer.append(c);
 		}
@@ -693,9 +700,10 @@ public class ChatTextField extends Widget implements Disableable {
 		cursor = 0;
 		clearSelection();
 
-		textBounds.set(font.getBounds(displayText));
-		textBounds.height -= font.getDescent() * 2;
-		font.computeGlyphAdvancesAndPositions(displayText, glyphAdvances, glyphPositions);
+		layout.setText(font,displayText);
+		layout.height -= font.getDescent() * 2;
+		//font.
+		computeGlyphAdvancesAndPositions(displayText, glyphAdvances, glyphPositions);
 	}
 
 	/** @return Never null, might be an empty string. */
@@ -761,7 +769,7 @@ public class ChatTextField extends Widget implements Disableable {
 	}
 
 	public float getPrefHeight () {
-		float prefHeight = textBounds.height;
+		float prefHeight = layout.height;
 		if (style.background != null) {
 			prefHeight = Math.max(prefHeight + style.background.getBottomHeight() + style.background.getTopHeight(),
 				style.background.getMinHeight());
